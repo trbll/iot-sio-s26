@@ -27,7 +27,7 @@ git clone https://github.com/trbll/iot-sio-s26.git
 2. Move into the project folder:
 
 ```bash
-cd iot-sio-starting
+cd iot-sio-s26
 ```
 
 3. Install dependencies:
