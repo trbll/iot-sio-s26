@@ -3,74 +3,155 @@ const http = require("http");
 const express = require("express");
 const { Server } = require("socket.io");
 
-// Create an Express app and wrap it in a plain HTTP server.
-// Socket.IO needs access to the raw HTTP server (not just Express)
-// so it can upgrade incoming connections from HTTP to WebSocket.
 const app = express();
 const server = http.createServer(app);
-
-// process.env.PORT lets hosting platforms (Heroku, Render, etc.) tell our app
-// which port to use.  If that variable isn't set (e.g. on your laptop), fall
-// back to 3000 so you can visit http://localhost:3000 during development.
 const PORT = process.env.PORT || 3000;
 
-// Serve everything in the /public folder as static files (HTML, CSS, JS).
-// This is how the browser receives script.js and the rest of the front-end.
 app.use(express.static(path.join(__dirname, "public")));
 
 server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+  console.log(`NEXUS server online — port ${PORT}`);
 });
 
-// Attach Socket.IO to the HTTP server.
-// io is the central hub that manages all connected clients.
 const io = new Server(server);
 
-// Server-side state: we remember the most recent background color so that
-// clients who join *after* the color was changed still see the right color.
-// Without this, late joiners would always start with the default.
-var lastBackgroundColor = "#00ff00";
+// ── State ────────────────────────────────────────────────────
+const users = new Map();
+const chatHistory = [];
+const MAX_HISTORY = 50;
+let accentColor = "#00f0ff";
 
-// "connection" fires every time a new client opens a socket to this server.
-// Each client gets its own `socket` object with a unique socket.id.
-io.on("connection", (socket) => 
-{
-  console.log(`Client connected: ${socket.id}`);
+const COLORS = [
+  "#00f0ff", "#ff006e", "#00ff88", "#ffbe0b",
+  "#fb5607", "#8338ec", "#3a86ff", "#06d6a0",
+  "#118ab2", "#ff7744", "#44ffcc", "#aa77ff",
+];
+let colorIdx = 0;
 
-  // Immediately send this new client the last-known background color.
-  // socket.emit() sends ONLY to this one socket — no other clients see it.
-  socket.emit('backgroundColorChanged', lastBackgroundColor);
+function nextColor() {
+  const c = COLORS[colorIdx % COLORS.length];
+  colorIdx++;
+  return c;
+}
 
-  // "disconnect" fires when this specific client's connection closes —
-  // whether they closed the tab, lost network, or the server ended the socket.
+function userList() {
+  return [...users.values()].map(({ id, name, color }) => ({ id, name, color }));
+}
+
+// ── Simulated IoT sensors ────────────────────────────────────
+let sensors = { temperature: 23, humidity: 55, pressure: 1013, light: 600 };
+
+function tickSensors() {
+  const t = Date.now() / 1000;
+  sensors = {
+    temperature: +(22 + Math.sin(t / 10) * 2 + Math.random() * 0.5).toFixed(1),
+    humidity:    +(50 + Math.cos(t / 8) * 10 + Math.random() * 2).toFixed(1),
+    pressure:    +(1013 + Math.sin(t / 15) * 4 + Math.random()).toFixed(1),
+    light:       Math.round(500 + Math.sin(t / 5) * 250 + Math.random() * 50),
+  };
+  return sensors;
+}
+
+setInterval(() => io.emit("sensors:update", tickSensors()), 2000);
+
+// ── Socket.IO ────────────────────────────────────────────────
+io.on("connection", (socket) => {
+  console.log(`+ socket ${socket.id}`);
+
+  // Join with display name
+  socket.on("user:join", (name) => {
+    const user = {
+      id: socket.id,
+      name: (name || "Anon").slice(0, 20),
+      color: nextColor(),
+    };
+    users.set(socket.id, user);
+
+    socket.emit("init", {
+      user,
+      users: userList(),
+      chatHistory,
+      accentColor,
+      sensors,
+    });
+
+    socket.broadcast.emit("user:joined", user);
+    io.emit("users:count", users.size);
+    console.log(`  ${user.name} joined (${users.size} online)`);
+  });
+
+  // Chat
+  socket.on("chat:message", (text) => {
+    const u = users.get(socket.id);
+    if (!u || typeof text !== "string" || !text.trim()) return;
+
+    const msg = {
+      id: `${Date.now()}-${socket.id}`,
+      userId: socket.id,
+      userName: u.name,
+      userColor: u.color,
+      text: text.trim().slice(0, 500),
+      timestamp: Date.now(),
+    };
+    chatHistory.push(msg);
+    if (chatHistory.length > MAX_HISTORY) chatHistory.shift();
+    io.emit("chat:message", msg);
+  });
+
+  socket.on("chat:typing", (isTyping) => {
+    const u = users.get(socket.id);
+    if (!u) return;
+    socket.broadcast.emit("chat:typing", {
+      userId: socket.id,
+      userName: u.name,
+      isTyping,
+    });
+  });
+
+  // Canvas
+  socket.on("canvas:draw", (d) => socket.broadcast.emit("canvas:draw", d));
+  socket.on("canvas:clear", () => socket.broadcast.emit("canvas:clear"));
+
+  socket.on("canvas:cursor", (pos) => {
+    const u = users.get(socket.id);
+    if (!u) return;
+    socket.broadcast.emit("canvas:cursor", {
+      userId: socket.id,
+      userName: u.name,
+      userColor: u.color,
+      ...pos,
+    });
+  });
+
+  // Reactions
+  socket.on("reaction:send", (emoji) => {
+    const u = users.get(socket.id);
+    if (!u) return;
+    io.emit("reaction:receive", {
+      emoji,
+      userName: u.name,
+      userColor: u.color,
+    });
+  });
+
+  // Theme accent color (shared across all clients)
+  socket.on("theme:change", (color) => {
+    if (typeof color !== "string") return;
+    accentColor = color;
+    socket.broadcast.emit("theme:change", color);
+  });
+
+  // Latency measurement
+  socket.on("ping:check", (ts) => socket.emit("ping:response", ts));
+
+  // Disconnect
   socket.on("disconnect", () => {
-    console.log(`Client disconnected: ${socket.id}`);
+    const u = users.get(socket.id);
+    users.delete(socket.id);
+    if (u) {
+      io.emit("user:left", { id: socket.id, name: u.name });
+      io.emit("users:count", users.size);
+      console.log(`  ${u.name} left (${users.size} online)`);
+    }
   });
-
-  // socket.emit() sends back to the SAME client that sent the message.
-  // Compare this with socket.broadcast.emit() used below, which sends to
-  // every client EXCEPT the sender.  io.emit() (not used here) would send
-  // to ALL clients including the sender.
-  socket.on('buttonPushed', () => {
-    console.log(`Button pushed by client: ${socket.id}`);
-    socket.emit('buttonPushed');
-  });
-
-  // socket.broadcast.emit() sends to every OTHER connected client, but NOT
-  // back to the sender.  This makes sense for the slider because the sender
-  // already moved their own slider — we only need to sync everyone else.
-  socket.on('moodChanged', (sliderValue) => {
-    console.log(`Mood changed by client: ${socket.id} to ${sliderValue}`);
-    socket.broadcast.emit('moodChanged', sliderValue);
-  });
-
-  // Two things happen here: (1) we persist the color in server memory so
-  // future clients can be initialized with it, and (2) we broadcast to all
-  // other clients so they update in real time.
-  socket.on('backgroundColorChanged', (backgroundColor) => {
-    console.log(`Background color changed by client: ${socket.id} to ${backgroundColor}`);
-    lastBackgroundColor = backgroundColor;
-    socket.broadcast.emit('backgroundColorChanged', lastBackgroundColor);
-  });
-
 });

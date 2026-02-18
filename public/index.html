@@ -1,48 +1,141 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>IoT Socket.IO Lab Starter</title>
-    <link rel="stylesheet" href="/style.css" />
-  </head>
-  <body>
-    <main class="container">
-      
-      <h1>IoT Socket.IO In-Class Lab</h1>
-      <p class="subtitle">Hello, World.</p>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NEXUS — IoT Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
 
-      <!-- Each interactive element uses an inline event attribute (onclick,
-           onchange) to call a function defined in script.js.  The "id"
-           attribute lets script.js find the element with getElementById(). -->
+  <!-- JOIN MODAL -->
+  <div id="joinModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-icon">◆</div>
+      <h1 class="modal-title">NEXUS</h1>
+      <p class="modal-sub">IoT Command Center</p>
+      <input type="text" id="nameInput" placeholder="Enter callsign..." maxlength="20" autocomplete="off" />
+      <button id="joinBtn">CONNECT</button>
+    </div>
+  </div>
 
-      <section class="panel">
-        <h2>Don't Press This Button</h2>
-        <!-- onclick fires the function once per click -->
-        <button id="button" onclick="buttonPushed()">Don't Press This Button</button>
+  <!-- FLOATING REACTIONS LAYER -->
+  <div id="reactionLayer" class="reaction-layer"></div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="dashboard hidden">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="logo">◆ NEXUS</span>
+        <span id="connStatus" class="conn-status offline">
+          <span class="status-dot"></span>
+          <span class="status-text">OFFLINE</span>
+        </span>
+      </div>
+      <div class="topbar-right">
+        <span id="pingDisplay" class="stat">PING --ms</span>
+        <span class="stat-sep">│</span>
+        <span id="userCount" class="stat">0 ONLINE</span>
+      </div>
+    </header>
+
+    <!-- MAIN GRID -->
+    <main class="grid">
+
+      <!-- OPERATIVES -->
+      <section class="panel panel-users">
+        <h2 class="panel-title">OPERATIVES</h2>
+        <ul id="userList" class="user-list"></ul>
       </section>
 
-      <section class="panel">
-        <h2>Mood Slider</h2>
-        <!-- type="range" renders a draggable slider; min/max/value set its
-             bounds and starting position.  onchange fires when the user
-             releases the slider at a new position. -->
-        <input type="range" id="mood" min="0" max="100" value="50" onchange="moodChanged()" />
+      <!-- COMMS CHANNEL -->
+      <section class="panel panel-chat">
+        <h2 class="panel-title">COMMS CHANNEL</h2>
+        <div id="chatMessages" class="chat-messages"></div>
+        <div id="typingIndicator" class="typing-indicator"></div>
+        <div class="chat-input-row">
+          <input type="text" id="chatInput" placeholder="Transmit message..." maxlength="500" autocomplete="off" />
+          <button id="sendBtn">SEND</button>
+        </div>
       </section>
 
-      <section class="panel">
-        <h2>Background Color</h2>
-        <!-- type="color" renders a native color-picker; its .value is a hex
-             string like "#ff00aa". -->
-        <input type="color" id="backgroundColor" onchange="backgroundColorChanged()" />
+      <!-- SHARED CANVAS -->
+      <section class="panel panel-canvas">
+        <h2 class="panel-title">SHARED CANVAS</h2>
+        <div class="canvas-wrapper" id="canvasWrapper">
+          <canvas id="drawCanvas"></canvas>
+        </div>
+        <div class="canvas-controls">
+          <input type="color" id="brushColor" value="#00f0ff" title="Brush color" />
+          <input type="range" id="brushSize" min="1" max="20" value="3" title="Brush size" />
+          <span id="brushSizeLabel" class="brush-label">3px</span>
+          <button id="clearBtn">CLEAR</button>
+        </div>
+      </section>
+
+      <!-- IoT TELEMETRY -->
+      <section class="panel panel-sensors">
+        <h2 class="panel-title">IoT TELEMETRY</h2>
+        <div class="sensor-grid">
+          <div class="sensor-card">
+            <div class="sensor-head"><span class="sensor-icon">🌡️</span><span class="sensor-label">TEMP</span></div>
+            <span id="sTemp" class="sensor-value">--°C</span>
+            <div class="sensor-bar"><div id="sTempBar" class="sensor-fill temp"></div></div>
+          </div>
+          <div class="sensor-card">
+            <div class="sensor-head"><span class="sensor-icon">💧</span><span class="sensor-label">HUMID</span></div>
+            <span id="sHumid" class="sensor-value">--%</span>
+            <div class="sensor-bar"><div id="sHumidBar" class="sensor-fill humid"></div></div>
+          </div>
+          <div class="sensor-card">
+            <div class="sensor-head"><span class="sensor-icon">🔵</span><span class="sensor-label">PRESS</span></div>
+            <span id="sPress" class="sensor-value">-- hPa</span>
+            <div class="sensor-bar"><div id="sPressBar" class="sensor-fill press"></div></div>
+          </div>
+          <div class="sensor-card">
+            <div class="sensor-head"><span class="sensor-icon">☀️</span><span class="sensor-label">LIGHT</span></div>
+            <span id="sLight" class="sensor-value">-- lux</span>
+            <div class="sensor-bar"><div id="sLightBar" class="sensor-fill light"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- REACTIONS & THEME -->
+      <section class="panel panel-reactions">
+        <h2 class="panel-title">REACTIONS</h2>
+        <div class="reaction-buttons">
+          <button class="rbtn" data-emoji="🚀">🚀</button>
+          <button class="rbtn" data-emoji="🔥">🔥</button>
+          <button class="rbtn" data-emoji="❤️">❤️</button>
+          <button class="rbtn" data-emoji="😎">😎</button>
+          <button class="rbtn" data-emoji="👽">👽</button>
+          <button class="rbtn" data-emoji="⚡">⚡</button>
+          <button class="rbtn" data-emoji="🤖">🤖</button>
+          <button class="rbtn" data-emoji="💀">💀</button>
+        </div>
+        <h2 class="panel-title" style="margin-top:0.75rem">ACCENT THEME</h2>
+        <div class="accent-row">
+          <input type="color" id="accentColor" value="#00f0ff" />
+          <span class="accent-label">Shared accent — synced for all operatives</span>
+        </div>
       </section>
 
     </main>
 
-    <!-- Socket.IO automatically exposes its client library at this URL when
-         attached to the HTTP server.  You didn't put this file in /public —
-         the Socket.IO package serves it on the fly. -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="/script.js" defer></script>
-  </body>
+    <!-- SYSTEM LOG -->
+    <footer class="system-log">
+      <span class="log-label">SYS ▸</span>
+      <div id="systemLog" class="log-scroll"></div>
+    </footer>
+
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/script.js"></script>
+</body>
 </html>
