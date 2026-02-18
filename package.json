@@ -1,0 +1,17 @@
+{
+  "name": "iot-sio-starting",
+  "version": "1.0.0",
+  "description": "Starter project for Socket.IO in-class lab (Render deployment)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
