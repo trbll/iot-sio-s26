@@ -12,18 +12,36 @@
       <h1>IoT Socket.IO In-Class Lab</h1>
       <p class="subtitle">Hello, World.</p>
 
+      <!-- Each interactive element uses an inline event attribute (onclick,
+           onchange) to call a function defined in script.js.  The "id"
+           attribute lets script.js find the element with getElementById(). -->
+
       <section class="panel">
         <h2>Don't Press This Button</h2>
+        <!-- onclick fires the function once per click -->
         <button id="button" onclick="buttonPushed()">Don't Press This Button</button>
       </section>
 
       <section class="panel">
-        <h2>Panel 2</h2>
+        <h2>Mood Slider</h2>
+        <!-- type="range" renders a draggable slider; min/max/value set its
+             bounds and starting position.  onchange fires when the user
+             releases the slider at a new position. -->
+        <input type="range" id="mood" min="0" max="100" value="50" onchange="moodChanged()" />
+      </section>
+
+      <section class="panel">
+        <h2>Background Color</h2>
+        <!-- type="color" renders a native color-picker; its .value is a hex
+             string like "#ff00aa". -->
+        <input type="color" id="backgroundColor" onchange="backgroundColorChanged()" />
       </section>
 
     </main>
 
-    <!-- Socket.IO client served by this Node server -->
+    <!-- Socket.IO automatically exposes its client library at this URL when
+         attached to the HTTP server.  You didn't put this file in /public —
+         the Socket.IO package serves it on the fly. -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="/script.js" defer></script>
   </body>
