@@ -5,5 +5,21 @@ const socket = io();
 
 function buttonPushed()
 {
-    alert("You shouldn't have pressed that button!");
+    socket.emit('buttonPushed', {} );
 }
+
+function moodChanged()
+{
+    var sliderValue = document.getElementById('mood').value;
+    socket.emit('moodChanged', sliderValue );
+}
+
+socket.on('buttonPushedResponse', () => 
+{
+    alert("You shouldn't have pressed that button!");
+});
+
+socket.on('moodChangedResponse', (sliderValue) => 
+{
+    document.getElementById('mood').value = sliderValue;
+});

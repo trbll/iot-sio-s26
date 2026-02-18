@@ -18,7 +18,13 @@
       </section>
 
       <section class="panel">
-        <h2>Panel 2</h2>
+        <h2>Mood Slider</h2>
+        <input type="range" id="mood" min="0" max="100" value="50" onchange="moodChanged()" />
+      </section>
+
+      <section class="panel">
+        <h2>Background Color</h2>
+        <input type="color" id="colorSelector" onchange="colorChanged()" />
       </section>
 
     </main>

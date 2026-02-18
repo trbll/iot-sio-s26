@@ -27,12 +27,26 @@ const io = new Server(server);
 // Each client gets its own `socket` object with a unique socket.id.
 io.on("connection", (socket) => 
 {
+
   console.log(`Client connected: ${socket.id}`);
 
   // "disconnect" fires when this specific client's connection closes —
   // whether they closed the tab, lost network, or the server ended the socket.
-  socket.on("disconnect", () => {
+  socket.on("disconnect", () => 
+  {
     console.log(`Client disconnected: ${socket.id}`);
+  });
+
+  socket.on('buttonPushed', () => 
+  {
+    console.log(`Button pushed by client: ${socket.id}`);
+    socket.emit('buttonPushedResponse', {} );
+  });
+
+  socket.on('moodChanged', (sliderValue) => 
+  {
+    console.log(`Mood changed by client: ${socket.id} to ${sliderValue}`);
+    socket.broadcast.emit('moodChangedResponse', sliderValue );
   });
 
 });
