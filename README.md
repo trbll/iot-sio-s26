@@ -21,7 +21,7 @@ npm -v
 1. Clone from the starter repository:
 
 ```bash
-git clone https://github.com/trbll/iot-sio-starting.git
+git clone https://github.com/trbll/iot-sio-s26.git
 ```
 
 2. Move into the project folder:
