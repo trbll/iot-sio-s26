@@ -14,6 +14,13 @@ function moodChanged()
     socket.emit('moodChanged', sliderValue );
 }
 
+function colorChanged()
+{
+    var colorValue = document.getElementById('colorSelector').value;
+    document.documentElement.style.backgroundColor = colorValue;
+    socket.emit('colorChanged', colorValue);
+}
+
 socket.on('buttonPushedResponse', () => 
 {
     alert("You shouldn't have pressed that button!");
@@ -22,4 +29,9 @@ socket.on('buttonPushedResponse', () =>
 socket.on('moodChangedResponse', (sliderValue) => 
 {
     document.getElementById('mood').value = sliderValue;
+});
+
+socket.on('colorChangedResponse', (colorValue) => 
+{
+    document.documentElement.style.backgroundColor = colorValue;
 });

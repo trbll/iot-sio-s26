@@ -23,12 +23,17 @@ server.listen(PORT, () => {
 // io is the central hub that manages all connected clients.
 const io = new Server(server);
 
+// Server-side state: we remember the most recent background color so that new
+// clients can be initialized with it. IN PRACTICE, DON'T DO IT THIS EXACT WAY.
+var lastBackgroundColor = "#00ff00";
+
 // "connection" fires every time a new client opens a socket to this server.
 // Each client gets its own `socket` object with a unique socket.id.
 io.on("connection", (socket) => 
 {
 
   console.log(`Client connected: ${socket.id}`);
+  socket.emit('colorChangedResponse', lastBackgroundColor );
 
   // "disconnect" fires when this specific client's connection closes —
   // whether they closed the tab, lost network, or the server ended the socket.
@@ -47,6 +52,13 @@ io.on("connection", (socket) =>
   {
     console.log(`Mood changed by client: ${socket.id} to ${sliderValue}`);
     socket.broadcast.emit('moodChangedResponse', sliderValue );
+  });
+
+  socket.on('colorChanged', (colorValue) => 
+  {
+    lastBackgroundColor = colorValue;
+    console.log(`Color changed by client: ${socket.id} to ${colorValue}`);
+    socket.broadcast.emit('colorChangedResponse', lastBackgroundColor );
   });
 
 });
